@@ -24,7 +24,7 @@ def train(logger_name: str, data_folder: str, batch_size: int, epochs: int):
         )],
         logger=logger
     )
-    module = FasterRCNNModule(80, 0.45)
+    module = FasterRCNNModule(91, 0.45)
     data_module = CocoDataModule(data_folder, batch_size=batch_size)
     module.train()
     trainer.fit(module, data_module)
