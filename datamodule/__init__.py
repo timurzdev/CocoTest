@@ -1,1 +1,1 @@
-from .datamodule import CocoDataModule, collate_wrapper
+from .datamodule import CocoDataModule
