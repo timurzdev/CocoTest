@@ -69,6 +69,24 @@ class FasterRCNNModule(pl.LightningModule):
     def forward(self, x):
         return self.model(x)
 
+    @staticmethod
+    def format_for_evaluation(output, target):
+        image_id = target["image_id"].item()
+        boxes = output["boxes"].tolist()
+        labels = output["labels"].tolist()
+        scores = output["scores"].tolist()
+
+        formatted_results = []
+        for box, label, score in zip(boxes, labels, scores):
+            formatted_results.append({
+                "image_id": image_id,
+                "category_id": label,
+                "bbox": box,
+                "score": score,
+            })
+
+        return formatted_results
+
     def training_step(self, batch, batch_idx):
         self.model.train()
         x, y = batch
@@ -84,7 +102,9 @@ class FasterRCNNModule(pl.LightningModule):
         with torch.no_grad():
             loss_dict = self.model(x, y)
         loss = sum(loss for loss in loss_dict.values())
+        self.model.eval()
         outputs = self(x)
+        # print(y)
         for output, target in zip(outputs, y):
             self.results.extend(self.format_for_evaluation(output, target))
         self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
@@ -98,4 +118,5 @@ class FasterRCNNModule(pl.LightningModule):
         cocoEval.summarize()
         # Get the Average Precision (AP) score
         avg_precision = cocoEval.stats[0]
+        print(type(avg_precision))
         self.log('val_mAP', avg_precision)

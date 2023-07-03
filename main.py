@@ -1,5 +1,6 @@
 import argparse
-import os.path
+import os
+from typing import Optional
 
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
@@ -9,11 +10,12 @@ from model import FasterRCNNModule
 from datamodule import CocoDataModule
 
 
-def train(logger_name: str, data_folder: str, batch_size: int, epochs: int, ckpt_path: str, pretrained: bool = True):
+def train(logger_name: str, data_folder: str, batch_size: int, epochs: int, ckpt_path: Optional[str] = None,
+          pretrained: bool = False):
     logger = WandbLogger(logger_name)
     trainer = pl.Trainer(
         max_epochs=epochs,
-        accelerator="auto",
+        accelerator="cpu",
         devices=1,
         callbacks=[EarlyStopping(
             monitor="loss_rpm_box_reg",
@@ -38,12 +40,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--train", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--predict", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--chkpt_path", type=str, default="./checkpoints/best.ckpt")
+    parser.add_argument("--pretrained", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--logger_name", type=str, default="default_logger")
     parser.add_argument("--data_folder", type=str, default="./data/coco2017")
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=1)
     args = parser.parse_args()
-    if args.train:
+    if args.train and not args.pretrained:
         train(args.logger_name, args.data_folder, args.batch_size, args.epochs)
 
 

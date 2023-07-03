@@ -1,6 +1,8 @@
 import lightning.pytorch as pl
 import torch
 from torch.utils.data import DataLoader, Dataset, random_split
+from torch.nn.utils.rnn import pad_sequence
+
 from torchvision.datasets import CocoDetection
 from torchvision import transforms
 
@@ -15,8 +17,7 @@ class CustomCocoDetection(CocoDetection):
 
     def __getitem__(self, idx):
         img, target = super().__getitem__(idx)
-
-        # Resize and adjust bounding boxes
+        img_id = self.ids[idx]
         boxes = []
         labels = []
         for t in target:
@@ -30,22 +31,29 @@ class CustomCocoDetection(CocoDetection):
             ])
             labels.append(t['category_id'])
 
-        target = {}
-        target["boxes"] = torch.as_tensor(boxes, dtype=torch.float32)
-        target["labels"] = torch.as_tensor(labels, dtype=torch.int64)
+        target_new = {}
+        target_new["boxes"] = torch.as_tensor(boxes, dtype=torch.float32)
+        target_new["labels"] = torch.as_tensor(labels, dtype=torch.int64)
+        target_new["image_id"] = torch.tensor([img_id], dtype=torch.float32)
 
         if self.transform is not None:
             img = self.transform(img)
 
-        return img, target
+        return img, target_new
 
 
 def collate_fn(batch):
-    images, targets = zip(*batch)
+    images = [item[0] for item in batch]
+    boxes = [item[1]["boxes"] for item in batch]
+    labels = [item[1]["labels"] for item in batch]
+    image_ids = [item[1]["image_id"] for item in batch]
 
-    # Assume that each image in the batch has the same size
-    # so we can use a simple collation function.
     images = torch.stack(images)
+    boxes = pad_sequence(boxes, batch_first=True)
+    labels = pad_sequence(labels, batch_first=True)
+    image_ids = torch.stack(image_ids)
+
+    targets = {"boxes": boxes, "labels": labels, "image_id": image_ids}
 
     return images, targets
 
@@ -60,10 +68,8 @@ class CocoDataModule(pl.LightningDataModule):
         self.base_path = base_data_folder
         self.image_size = image_size
         self.batch_size = batch_size
-        self.train_annotation_path = os.path.join(self.base_path, "annotations", "instances_train2017.json")
-        self.train_data_path = os.path.join(self.base_path, "train2017")
-        self.val_annotation_path = os.path.join(self.base_path, "annotations", "instances_val2017.json")
-        self.val_data_path = os.path.join(self.base_path, "val2017")
+        self.annotation_path = os.path.join(self.base_path, "annotations", "instances_val2017.json")
+        self.data_path = os.path.join(self.base_path, "images", "val2017")
         self.transform = transforms.Compose(
             [
                 transforms.ToTensor(),
@@ -76,11 +82,9 @@ class CocoDataModule(pl.LightningDataModule):
         )
 
     def prepare_data(self) -> None:
-        dataset = CustomCocoDetection(self.train_data_path, self.train_annotation_path, image_size=self.image_size,
+        dataset = CustomCocoDetection(self.data_path, self.annotation_path, image_size=self.image_size,
                                       transform=self.transform)
-        self.train_dataset, self.val_dataset = random_split(dataset, [0.8, 0.2])
-        self.test_dataset = CustomCocoDetection(self.val_data_path, self.val_annotation_path,
-                                                image_size=self.image_size, transform=self.transform)
+        self.train_dataset, self.val_dataset, self.test_dataset = random_split(dataset, [0.7, 0.15, 0.15])
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=4, shuffle=True)
