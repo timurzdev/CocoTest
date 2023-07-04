@@ -34,11 +34,11 @@ class CustomCocoDetection(CocoDetection):
         target_new = {}
         target_new["boxes"] = torch.as_tensor(boxes, dtype=torch.float32)
         target_new["labels"] = torch.as_tensor(labels, dtype=torch.int64)
-        target_new["image_id"] = torch.tensor([img_id], dtype=torch.float32)
+        target_new["image_id"] = torch.tensor([img_id], dtype=torch.int64)
 
         if self.transform is not None:
             img = self.transform(img)
-
+        print("________", target_new, "_______")
         return img, target_new
 
 
@@ -87,11 +87,11 @@ class CocoDataModule(pl.LightningDataModule):
         self.train_dataset, self.val_dataset, self.test_dataset = random_split(dataset, [0.7, 0.15, 0.15])
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=4, shuffle=True)
+        return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=4, shuffle=True,
+                          collate_fn=collate_fn)
 
     def val_dataloader(self):
-        return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=4,
-                          collate_fn=collate_fn)
+        return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=4, collate_fn=collate_fn)
 
     def test_dataloader(self):
         return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=4, shuffle=True,

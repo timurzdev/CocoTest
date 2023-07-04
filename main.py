@@ -2,6 +2,7 @@ import argparse
 import os
 from typing import Optional
 
+import torch
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.loggers import WandbLogger
@@ -30,6 +31,12 @@ def train(logger_name: str, data_folder: str, batch_size: int, epochs: int, ckpt
         module = FasterRCNNModule.load_from_checkpoint(ckpt_path)
     else:
         module = FasterRCNNModule(91, 0.45, os.path.join(data_folder, "annotations", "instances_val2017.json"))
+    torch.save(
+        {
+            "model_state_dict": module.model.state_dict()
+        },
+        "model.pth"
+    )
     data_module = CocoDataModule(data_folder, batch_size=batch_size)
     module.train()
     trainer.fit(module, data_module)

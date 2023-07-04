@@ -14,23 +14,6 @@ def get_model(num_classes: int):
     return model
 
 
-#
-# def convert_to_targets(annotations):
-#     targets = []
-#     for image_annotations in annotations:
-#         target = {}
-#         boxes = []
-#         labels = []
-#         for annotation in image_annotations:
-#             x_min, y_min, width, height = annotation["bbox"]
-#             boxes.append([x_min, y_min, x_min + width, y_min + height])
-#             labels.append(annotation["category_id"])
-#         target["boxes"] = torch.as_tensor(boxes, dtype=torch.float32)
-#         target["labels"] = torch.as_tensor(labels, dtype=torch.int64)
-#         targets.append(target)
-#     return targets
-#
-
 class FasterRCNNModule(pl.LightningModule):
     def __init__(self, num_classes: int, iou_threshold: float, annotation_path: str, lr: float = 1e-4):
         super().__init__()
@@ -100,6 +83,7 @@ class FasterRCNNModule(pl.LightningModule):
         self.model.train()
         x, y = batch
         with torch.no_grad():
+            print("TARGET_VAL: ____________", y, "_____________________")
             loss_dict = self.model(x, y)
         loss = sum(loss for loss in loss_dict.values())
         self.model.eval()
