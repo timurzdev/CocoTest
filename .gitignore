@@ -1,2 +1,4 @@
 /wandb/
 /.ipynb_checkpoints/
+model.pth
+
