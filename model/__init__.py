@@ -1,1 +1,2 @@
-from .model import FasterRCNNModule, get_model
+from .model import FasterRCNNModule
+from .base_model import get_model

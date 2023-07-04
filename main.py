@@ -16,10 +16,10 @@ def train(logger_name: str, data_folder: str, batch_size: int, epochs: int, ckpt
     logger = WandbLogger(logger_name)
     trainer = pl.Trainer(
         max_epochs=epochs,
-        accelerator="cpu",
+        accelerator="auto",
         devices=1,
         callbacks=[EarlyStopping(
-            monitor="loss_rpm_box_reg",
+            monitor="val_loss",
             min_delta=0.00,
             patience=2,
             verbose=False,
@@ -31,12 +31,7 @@ def train(logger_name: str, data_folder: str, batch_size: int, epochs: int, ckpt
         module = FasterRCNNModule.load_from_checkpoint(ckpt_path)
     else:
         module = FasterRCNNModule(91, 0.45, os.path.join(data_folder, "annotations", "instances_val2017.json"))
-    torch.save(
-        {
-            "model_state_dict": module.model.state_dict()
-        },
-        "model.pth"
-    )
+
     data_module = CocoDataModule(data_folder, batch_size=batch_size)
     module.train()
     trainer.fit(module, data_module)
@@ -46,7 +41,6 @@ def train(logger_name: str, data_folder: str, batch_size: int, epochs: int, ckpt
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--train", action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument("--predict", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--chkpt_path", type=str, default="./checkpoints/best.ckpt")
     parser.add_argument("--pretrained", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--logger_name", type=str, default="default_logger")
@@ -54,8 +48,8 @@ def main():
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=1)
     args = parser.parse_args()
-    if args.train and not args.pretrained:
-        train(args.logger_name, args.data_folder, args.batch_size, args.epochs)
+    if args.train:
+        train(args.logger_name, args.data_folder, args.batch_size, args.epochs, args.chkpt_path, args.pretrained)
 
 
 if __name__ == '__main__':
