@@ -1,14 +1,21 @@
+from pycocotools.coco import COCO
+from pycocotools.cocoeval import COCOeval
+
 import lightning.pytorch as pl
 import torch
 import torch.optim as optim
-from pycocotools.coco import COCO
-from pycocotools.cocoeval import COCOeval
 
 from .base_model import get_model
 
 
 class FasterRCNNModule(pl.LightningModule):
-    def __init__(self, num_classes: int, iou_threshold: float, annotation_path: str, lr: float = 1e-4):
+    def __init__(
+        self,
+        num_classes: int,
+        iou_threshold: float,
+        annotation_path: str,
+        lr: float = 1e-4,
+    ):
         super().__init__()
         self.model = get_model(num_classes)
         self.lr = lr
@@ -18,7 +25,9 @@ class FasterRCNNModule(pl.LightningModule):
         # Save hyperparameters
         # Saves model arguments to the ``hparams`` attribute.
         self.save_hyperparameters()
-        self.cocoGt = COCO(self.val_annotation_path)  # replace with path to your annotation file
+        self.cocoGt = COCO(
+            self.val_annotation_path
+        )  # replace with path to your annotation file
         self.results = []
 
     def configure_optimizers(self):
@@ -54,12 +63,14 @@ class FasterRCNNModule(pl.LightningModule):
 
         formatted_results = []
         for box, label, score in zip(boxes, labels, scores):
-            formatted_results.append({
-                "image_id": image_id,
-                "category_id": label,
-                "bbox": box,
-                "score": score,
-            })
+            formatted_results.append(
+                {
+                    "image_id": image_id,
+                    "category_id": label,
+                    "bbox": box,
+                    "score": score,
+                }
+            )
 
         return formatted_results
 
@@ -69,7 +80,9 @@ class FasterRCNNModule(pl.LightningModule):
         loss_dict = self.model(x, y)
         loss = sum(loss for loss in loss_dict.values())
 
-        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log(
+            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -84,16 +97,18 @@ class FasterRCNNModule(pl.LightningModule):
         # print(y)
         for output, target in zip(outputs, y):
             self.results.extend(self.format_for_evaluation(output, target))
-        self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log(
+            "val_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
         return loss
 
     def on_validation_epoch_end(self):
         cocoDt = self.cocoGt.loadRes(self.results)
-        cocoEval = COCOeval(self.cocoGt, cocoDt, iouType='bbox')
+        cocoEval = COCOeval(self.cocoGt, cocoDt, iouType="bbox")
         cocoEval.evaluate()
         cocoEval.accumulate()
         cocoEval.summarize()
         # Get the Average Precision (AP) score
         avg_precision = cocoEval.stats[0]
         print(type(avg_precision))
-        self.log('val_mAP', avg_precision)
+        self.log("val_mAP", avg_precision)

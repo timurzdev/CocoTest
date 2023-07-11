@@ -2,3 +2,6 @@
 /.ipynb_checkpoints/
 model.pth
 
+.idea
+checkpoints
+venv

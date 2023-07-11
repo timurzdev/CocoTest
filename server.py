@@ -1,11 +1,13 @@
-from flask import Flask, request, jsonify
+import io
+
+from PIL import Image
+
+from flask import Flask, jsonify, request
+import torch
 import torchvision
 from torchvision import transforms
-from torchvision.ops import nms
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
-from PIL import Image
-import torch
-import io
+from torchvision.ops import nms
 
 transform = transforms.Compose(
     [
@@ -38,11 +40,11 @@ model.eval()
 @app.route("/predict", methods=["POST"])
 def predict():
     if request.method == "POST":
-        if 'file' not in request.files:
-            return jsonify({'error': 'No file part in the request'}), 400
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({'error': 'No file selected for uploading'}), 400
+        if "file" not in request.files:
+            return jsonify({"error": "No file part in the request"}), 400
+        file = request.files["file"]
+        if file.filename == "":
+            return jsonify({"error": "No file selected for uploading"}), 400
         if file:
             image = Image.open(io.BytesIO(file.read())).convert("RGB")
             image = transform(image)
@@ -52,9 +54,9 @@ def predict():
             with torch.no_grad():
                 prediction = model(image)
 
-            boxes = prediction[0]['boxes']
-            scores = prediction[0]['scores']
-            labels = prediction[0]['labels']
+            boxes = prediction[0]["boxes"]
+            scores = prediction[0]["scores"]
+            labels = prediction[0]["labels"]
 
             score_threshold = 0.1
             indices = [i for i, score in enumerate(scores) if score > score_threshold]
@@ -63,9 +65,9 @@ def predict():
             labels = labels[indices]
             keep = nms(boxes, scores, 0.5)
 
-            prediction[0]['boxes'] = boxes[keep]
-            prediction[0]['scores'] = scores[keep]
-            prediction[0]['labels'] = labels[keep]
+            prediction[0]["boxes"] = boxes[keep]
+            prediction[0]["scores"] = scores[keep]
+            prediction[0]["labels"] = labels[keep]
             for key, value in prediction[0].items():
                 prediction[0][key] = value.tolist()
             return jsonify(prediction[0])

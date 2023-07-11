@@ -1,6 +1,7 @@
-import requests
 import argparse
 import time
+
+import requests
 
 
 def test_predict_endpoint(url: str, filepath: str):
@@ -26,7 +27,7 @@ def measure_request_time(url: str, filepath: str):
     print(f"Average time per request: {avg_time} seconds")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--file", type=str, required=True)
     parser.add_argument("--url", type=str, required=True)

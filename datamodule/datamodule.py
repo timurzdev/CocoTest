@@ -1,12 +1,11 @@
+import os
+
 import lightning.pytorch as pl
 import torch
-from torch.utils.data import DataLoader, Dataset, random_split
 from torch.nn.utils.rnn import pad_sequence
-
-from torchvision.datasets import CocoDetection
+from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
-
-import os
+from torchvision.datasets import CocoDetection
 
 
 class CustomCocoDetection(CocoDetection):
@@ -21,15 +20,17 @@ class CustomCocoDetection(CocoDetection):
         boxes = []
         labels = []
         for t in target:
-            x_min, y_min, width, height = t['bbox']
+            x_min, y_min, width, height = t["bbox"]
             # Adjust bounding boxes to match resized image
-            boxes.append([
-                x_min * self.image_size[0] / img.width,
-                y_min * self.image_size[1] / img.height,
-                (x_min + width) * self.image_size[0] / img.width,
-                (y_min + height) * self.image_size[1] / img.height
-            ])
-            labels.append(t['category_id'])
+            boxes.append(
+                [
+                    x_min * self.image_size[0] / img.width,
+                    y_min * self.image_size[1] / img.height,
+                    (x_min + width) * self.image_size[0] / img.width,
+                    (y_min + height) * self.image_size[1] / img.height,
+                ]
+            )
+            labels.append(t["category_id"])
 
         target_new = {}
         target_new["boxes"] = torch.as_tensor(boxes, dtype=torch.float32)
@@ -59,16 +60,19 @@ def collate_fn(batch):
 
 
 class CocoDataModule(pl.LightningDataModule):
-    def __init__(self,
-                 base_data_folder: str,
-                 batch_size: int,
-                 image_size: (int, int) = (256, 256)
-                 ):
+    def __init__(
+        self,
+        base_data_folder: str,
+        batch_size: int,
+        image_size: (int, int) = (256, 256),
+    ):
         super().__init__()
         self.base_path = base_data_folder
         self.image_size = image_size
         self.batch_size = batch_size
-        self.annotation_path = os.path.join(self.base_path, "annotations", "instances_val2017.json")
+        self.annotation_path = os.path.join(
+            self.base_path, "annotations", "instances_val2017.json"
+        )
         self.data_path = os.path.join(self.base_path, "images", "val2017")
         self.transform = transforms.Compose(
             [
@@ -82,17 +86,38 @@ class CocoDataModule(pl.LightningDataModule):
         )
 
     def prepare_data(self) -> None:
-        dataset = CustomCocoDetection(self.data_path, self.annotation_path, image_size=self.image_size,
-                                      transform=self.transform)
-        self.train_dataset, self.val_dataset, self.test_dataset = random_split(dataset, [0.7, 0.15, 0.15])
+        dataset = CustomCocoDetection(
+            self.data_path,
+            self.annotation_path,
+            image_size=self.image_size,
+            transform=self.transform,
+        )
+        self.train_dataset, self.val_dataset, self.test_dataset = random_split(
+            dataset, [0.7, 0.15, 0.15]
+        )
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=4, shuffle=True,
-                          collate_fn=collate_fn)
+        return DataLoader(
+            self.train_dataset,
+            batch_size=self.batch_size,
+            num_workers=4,
+            shuffle=True,
+            collate_fn=collate_fn,
+        )
 
     def val_dataloader(self):
-        return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=4, collate_fn=collate_fn)
+        return DataLoader(
+            self.val_dataset,
+            batch_size=self.batch_size,
+            num_workers=4,
+            collate_fn=collate_fn,
+        )
 
     def test_dataloader(self):
-        return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=4, shuffle=True,
-                          collate_fn=collate_fn)
+        return DataLoader(
+            self.test_dataset,
+            batch_size=self.batch_size,
+            num_workers=4,
+            shuffle=True,
+            collate_fn=collate_fn,
+        )
